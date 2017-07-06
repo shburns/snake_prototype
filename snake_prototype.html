@@ -1,0 +1,231 @@
+<html>
+    <head>
+        <script>
+            isGameOver = false;
+            game = null;
+            tSize = 20;
+            startLength = 5;
+            head = {
+                x: 0,
+                y: 0,
+                nextJoint: null,
+                prevJoint: null
+            };
+            tail = {
+                x: 0,
+                y: 0,
+                nextJoint: null,
+                prevJoint: null
+            };
+            appleX = appleY = 0;
+            const LEFT = 0;
+            const UP = 1;
+            const RIGHT = 2;
+            const DOWN = 3;
+            dir = RIGHT;
+            
+            window.onload = function () {
+                cvs = document.getElementById("cvs");
+                ctx = cvs.getContext("2d");
+                document.addEventListener("keyup", keyUpHandler);
+                initSnake();
+                setNewApple();
+                game = setInterval(render, 1000/15);
+            }
+
+            function render() {
+                ctx.fillStyle="black";
+                ctx.fillRect(0,0, cvs.width, cvs.height);
+
+                //Get the new head position based on current direction
+                newPos = getNewHeadPosition();
+                var newHead = {
+                    x: newPos.x,
+                    y: newPos.y,
+                    prevJoint: null,
+                    nextJoint: head
+                };
+
+                //Check for self-intersection (ends the game if you eat yourself).
+                if(!checkForSelfIntersect(newHead)) {
+                    gameOver();
+                }
+                if (isGameOver) {
+                    return;
+                }
+                
+                //Set the 'head' pointer to the new node, and if the snake
+                //hasn't eaten the apple, trim the tail to maintain current length.
+                head.prevJoint = newHead;
+                head = newHead;
+                if (head.x != appleX || head.y != appleY) {
+                    var newTail = tail.prevJoint;
+                    tail.prevJoint.nextJoint = null;
+                    tail = newTail;
+                } else {
+                    setNewApple();
+                }
+                
+                //draw
+                drawSnake();
+                drawApple();
+            }
+
+            function initSnake() {
+                head = {
+                    x: 0,
+                    y: 0,
+                    nextJoint: null,
+                    prevJoint: null
+                };
+                tail = {
+                    x: 0,
+                    y: 0,
+                    nextJoint: null,
+                    prevJoint: null
+                }
+                head.x = Math.floor((cvs.width/tSize)/2) * tSize;
+                head.y = Math.floor((cvs.height/tSize)/2) * tSize;
+                var nextJoint = {};
+                var prevJoint = head;
+                for (var i = 0; i < startLength; i++) {
+                    nextJoint = {
+                        x: prevJoint.x - tSize,
+                        y: prevJoint.y,
+                        nextJoint: null,
+                        prevJoint: prevJoint
+                    };
+                    prevJoint.nextJoint = nextJoint;
+                    prevJoint = nextJoint;
+                }
+                tail = nextJoint;
+                dir = RIGHT;
+            }
+
+            function getNewHeadPosition() {
+                let newX = newY = 0;
+                switch(dir) {
+                    case RIGHT:
+                        if (head.x + tSize <= cvs.width) {
+                            newX = head.x + tSize;
+                            newY = head.y;
+                        } else {
+                            gameOver();
+                        }
+                        break;
+                    case LEFT:
+                        if(head.x - tSize >= 0) {
+                            newX = head.x - tSize;
+                            newY = head.y;
+                        } else {
+                            gameOver();
+                        }
+                        break;
+                    case UP:
+                        if (head.y - tSize >= 0) {
+                            newY = head.y - tSize;
+                            newX = head.x;
+                        } else {
+                            gameOver();
+                        }
+                        break;
+                    case DOWN:
+                        if(head.y + tSize <= cvs.height) {
+                            newY = head.y + tSize;
+                            newX = head.x;
+                        } else {
+                            gameOver();
+                        }
+                        break;
+                }
+                return { x: newX, y: newY };
+            }
+
+            function checkForSelfIntersect(newHead) {
+                let currNode = head;
+                while(currNode.nextJoint != null) {
+                    if (newHead.x == currNode.x && newHead.y == currNode.y) {
+                        return false;
+                    }
+                    currNode = currNode.nextJoint;
+                }
+                return true;
+            }
+
+            function setNewApple() {
+                //Make sure apple isn't already on the snake
+                var isIntersecting = true;
+                while(isIntersecting) {
+                    appleX = Math.floor(Math.random() * (cvs.width/tSize)) * tSize;
+                    appleY = Math.floor(Math.random() * (cvs.height/tSize)) * tSize;
+                    var currNode = head;
+                    isIntersecting = false;
+                    while(currNode.nextJoint != null) {
+                        if (currNode.x == appleX && currNode.y == appleY) {
+                            isIntersecting = true;
+                            break;
+                        }
+                        currNode = currNode.nextJoint;
+                    }
+                }
+            }
+
+            function drawSnake() {
+                ctx.fillStyle = "green";
+                var currJoint = head;
+                while(currJoint != null) {
+                    ctx.fillRect(currJoint.x, currJoint.y, tSize, tSize);
+                    currJoint = currJoint.nextJoint;
+                }
+            }
+
+            function drawApple() {
+                ctx.fillStyle = "red";
+                ctx.fillRect(appleX, appleY, tSize, tSize);
+            }
+
+            function gameOver() {
+                clearInterval(game);
+                initSnake();
+                setNewApple();
+                isGameOver = true;
+            }
+
+            function keyUpHandler(evt) {
+                if (isGameOver) {
+                    game = setInterval(render, 1000/15);
+                    isGameOver = false;
+                }
+                switch (evt.keyCode) {
+                    case 65:
+                    case 37:
+                        if (dir != RIGHT) {
+                            dir = LEFT;
+                        }
+                        break;
+                    case 87:
+                    case 38:
+                        if(dir != DOWN) {
+                            dir = UP;
+                        }
+                        break;
+                    case 68:
+                    case 39:
+                        if(dir != LEFT) {
+                            dir = RIGHT;
+                        }
+                        break;
+                    case 83:
+                    case 40:
+                        if(dir != UP) {
+                            dir = DOWN;
+                        }
+                        break;
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <canvas id="cvs" width="640" height="480"/>
+    </body>
+</html>
